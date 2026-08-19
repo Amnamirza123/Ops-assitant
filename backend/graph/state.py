@@ -23,6 +23,10 @@ class AgentState(TypedDict):
     # The next tool/node that should run.
     next_tool: Optional[str]
 
+    # Which tool actually produced the final answer — shown in the UI
+    # as a small badge on each response.
+    used_tool: Optional[str]
+
     # Information retrieved from the client lookup.
     client_data: Optional[dict]
 

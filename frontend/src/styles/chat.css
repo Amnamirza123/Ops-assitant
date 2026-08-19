@@ -263,3 +263,115 @@
   background: rgba(226, 75, 74, 0.1);
   color: #E24B4A;
 }
+.ops-capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
+}
+.ops-capability-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: rgba(0, 224, 168, 0.08);
+  border: 1px solid rgba(0, 224, 168, 0.2);
+  color: #7FD4B4;
+  font-size: 12.5px;
+}
+
+.ops-capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.ops-capability-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: rgba(0, 224, 168, 0.08);
+  border: 1px solid rgba(0, 224, 168, 0.2);
+  color: #7FD4B4;
+  font-size: 12.5px;
+}
+
+.ops-tool-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+  margin-top: 8px;
+  font-size: 10px;
+  color: #5A8C77;
+  background: rgba(0, 224, 168, 0.08);
+  padding: 3px 8px;
+  border-radius: 8px;
+  width: fit-content;
+  margin-left: auto;
+}
+
+.ops-tools-menu-wrapper {
+  position: relative;
+}
+
+.ops-tools-dropdown {
+  position: absolute;
+  bottom: 52px;
+  left: 0;
+  width: 260px;
+  background: rgba(10, 20, 15, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 224, 168, 0.25);
+  border-radius: 12px;
+  padding: 10px;
+  z-index: 10;
+}
+
+.ops-tools-dropdown-header {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #4F7A5E;
+  padding: 4px 8px 8px;
+}
+
+.ops-tool-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border-radius: 8px;
+  color: #EAFBF3;
+  font-size: 13px;
+}
+
+.ops-tool-option i {
+  color: #0AF5C4;
+  margin-right: 6px;
+}
+
+.ops-tool-option span {
+  font-size: 11px;
+  color: #6FA98F;
+  margin-left: 20px;
+}
+
+.ops-tool-option:hover {
+  background: rgba(0, 224, 168, 0.06);
+}
+
+.ops-tools-menu-wrapper .ops-upload-pin {
+  width: 64px;
+  height: 82px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

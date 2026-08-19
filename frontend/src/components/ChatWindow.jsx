@@ -10,14 +10,22 @@ import '../styles/chat.css';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+const TOOL_ICONS = {
+  'Client Lookup': 'ti-users',
+  'Calculator': 'ti-calculator',
+  'Knowledge Base': 'ti-file-search',
+  'Email Assistant': 'ti-mail',
+};
+
 function ChatWindow({ sessionId, onMessageSent, onDocumentUploaded }) {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState(null); // null | 'uploading' | 'success' | 'duplicate' | 'error'
+  const [uploadStatus, setUploadStatus] = useState(null);
   const [pendingApproval, setPendingApproval] = useState(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const [showToolsMenu, setShowToolsMenu] = useState(false);
 
   useEffect(() => {
     loadHistory();
@@ -49,8 +57,8 @@ function ChatWindow({ sessionId, onMessageSent, onDocumentUploaded }) {
     }
   }
 
-  async function revealTextGradually(fullText) {
-    setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+  async function revealTextGradually(fullText, tool) {
+    setMessages((prev) => [...prev, { role: 'assistant', content: '', tool }]);
     const words = fullText.split(' ');
     let shown = '';
 
@@ -58,7 +66,7 @@ function ChatWindow({ sessionId, onMessageSent, onDocumentUploaded }) {
       shown += (shown ? ' ' : '') + word;
       setMessages((prev) => {
         const updated = [...prev];
-        updated[updated.length - 1] = { role: 'assistant', content: shown };
+        updated[updated.length - 1] = { role: 'assistant', content: shown, tool };
         return updated;
       });
       await new Promise((resolve) => setTimeout(resolve, 25));
@@ -87,7 +95,7 @@ function ChatWindow({ sessionId, onMessageSent, onDocumentUploaded }) {
       if (data.status === 'waiting_for_approval') {
         setPendingApproval(data.details);
       } else {
-        await revealTextGradually(data.answer);
+        await revealTextGradually(data.answer, data.used_tool);
         onMessageSent?.();
       }
     } catch (error) {
@@ -111,7 +119,7 @@ function ChatWindow({ sessionId, onMessageSent, onDocumentUploaded }) {
       });
       const data = await res.json();
 
-      await revealTextGradually(data.answer);
+      await revealTextGradually(data.answer, 'Email Assistant');
       setPendingApproval(null);
       onMessageSent?.();
     } catch (error) {
@@ -148,7 +156,7 @@ function ChatWindow({ sessionId, onMessageSent, onDocumentUploaded }) {
         setUploadStatus('duplicate');
       } else {
         setUploadStatus('success');
-        onDocumentUploaded?.(); // triggers the sidebar's docsRefreshKey bump
+        onDocumentUploaded?.();
       }
     } catch (error) {
       setUploadStatus('error');
@@ -164,12 +172,24 @@ function ChatWindow({ sessionId, onMessageSent, onDocumentUploaded }) {
           <div className="ops-welcome">
             <h2>Ops Assistant</h2>
             <p>Ask about a client, run a calculation, search company docs, or draft an email.</p>
+            <div className="ops-capabilities">
+              <div className="ops-capability-chip"><i className="ti ti-users" /> Client lookup</div>
+              <div className="ops-capability-chip"><i className="ti ti-calculator" /> Calculator</div>
+              <div className="ops-capability-chip"><i className="ti ti-file-search" /> Knowledge base (RAG)</div>
+              <div className="ops-capability-chip"><i className="ti ti-mail" /> Email drafting</div>
+            </div>
           </div>
         )}
 
         {messages.map((msg, i) => (
           <div key={i} className={msg.role === 'user' ? 'ops-message user' : 'ops-message assistant'}>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+            {msg.role === 'assistant' && msg.tool && (
+              <div className="ops-tool-badge">
+                <i className={`ti ${TOOL_ICONS[msg.tool] || 'ti-tool'}`} />
+                {msg.tool}
+              </div>
+            )}
           </div>
         ))}
 
@@ -212,7 +232,7 @@ function ChatWindow({ sessionId, onMessageSent, onDocumentUploaded }) {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="ops-input-area">
+            <div className="ops-input-area">
         <button
           className="ops-upload-pin"
           onClick={() => fileInputRef.current?.click()}
@@ -228,6 +248,38 @@ function ChatWindow({ sessionId, onMessageSent, onDocumentUploaded }) {
           onChange={handleFileUpload}
           hidden
         />
+
+        <div className="ops-tools-menu-wrapper">
+          <button
+            className="ops-upload-pin"
+            onClick={() => setShowToolsMenu((v) => !v)}
+            title="Available tools"
+          >
+            <i className="ti ti-tools" style={{ fontSize: '16px' }} />
+          </button>
+
+          {showToolsMenu && (
+            <div className="ops-tools-dropdown">
+              <div className="ops-tools-dropdown-header">Available tools</div>
+              <div className="ops-tool-option">
+                <i className="ti ti-users" /> Client Lookup
+                <span>Look up client status, role, department, contact info</span>
+              </div>
+              <div className="ops-tool-option">
+                <i className="ti ti-calculator" /> Calculator
+                <span>Run calculations and percentages</span>
+              </div>
+              <div className="ops-tool-option">
+                <i className="ti ti-file-search" /> Knowledge Base
+                <span>Search uploaded company documents</span>
+              </div>
+              <div className="ops-tool-option">
+                <i className="ti ti-mail" /> Email Assistant
+                <span>Draft emails — sent only after your approval</span>
+              </div>
+            </div>
+          )}
+        </div>
 
         <textarea
           value={message}

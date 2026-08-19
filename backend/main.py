@@ -56,10 +56,9 @@ def chat(request: ChatRequest, user: dict = Depends(get_current_user)):
         return {"status": "waiting_for_approval", "details": interrupt_obj.value}
 
     answer = result["messages"][-1].content
+    used_tool = result.get("used_tool")
     save_turn(request.session_id, user["user_id"], request.message, answer)
-
-    return {"status": "done", "answer": answer}
-
+    return {"status": "done", "answer": answer, "used_tool": used_tool}
 
 @app.post("/approve")
 def approve(request: ApproveRequest, user: dict = Depends(get_current_user)):

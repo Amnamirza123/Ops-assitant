@@ -16,12 +16,20 @@ from tools.email_tool import draft_email
 
 
 llm = ChatOpenAI(
-    model="nvidia/nemotron-3.5-lightning:free",
+    model="nvidia/nemotron-3-ultra-550b-a55b:free",
     api_key=os.getenv("OPENROUTER_API_KEY"),
     base_url="https://openrouter.ai/api/v1",
     temperature=0,
 )
 
+# Small, fast model for simple mechanical steps (classify, extraction) —
+# these don't need heavy reasoning, just speed.
+fast_llm = ChatOpenAI(
+    model="nvidia/nemotron-3-nano-30b-a3b:free",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+    base_url="https://openrouter.ai/api/v1",
+    temperature=0,
+)
 MAX_STEPS = 6
 
 
@@ -61,7 +69,7 @@ def classify_node(state: AgentState) -> dict:
         "Answer with only one word."
     )
 
-    response = llm.invoke(prompt)
+    response = fast_llm.invoke(prompt)
     request_type = response.content.strip().lower()
 
     allowed = {"math", "client", "email", "rag", "general"}
@@ -118,6 +126,7 @@ def lookup_node(state: AgentState) -> dict:
             "lookup_result": f"No client found matching '{client_name}'.",
             "client_data": None,
             "next_tool": None,
+            "used_tool": "Client Lookup",
             "step_count": state.get("step_count", 0) + 1,
         }
 
@@ -150,6 +159,7 @@ def lookup_node(state: AgentState) -> dict:
         "client_data": client,
         "lookup_result": lookup_result,
         "next_tool": next_tool,
+        "used_tool": "Client Lookup",
         "step_count": state.get("step_count", 0) + 1,
     }
 
@@ -191,6 +201,7 @@ def calculator_node(state: AgentState) -> dict:
     return {
         "calculation_result": str(result),
         "next_tool": "final",
+        "used_tool": "Calculator",
         "step_count": state.get("step_count", 0) + 1,
     }
 
@@ -229,6 +240,7 @@ def rag_node(state: AgentState) -> dict:
         "rag_result": str(result),
         "next_tool": "final",
         "step_count": state.get("step_count", 0) + 1,
+        "used_tool": "Knowledge Base",
     }
 
 # ============================================================
@@ -241,6 +253,7 @@ def general_node(state: AgentState) -> dict:
     return {
         "messages": [response],
         "next_tool": None,
+        "used_tool": None,
     }
 
 
@@ -365,6 +378,7 @@ def draft_email_node(state: AgentState) -> dict:
     return {
         "draft_email": draft,
         "step_count": state.get("step_count", 0) + 1,
+        "used_tool": "Email Assistant",
     }
 
 
