@@ -1,0 +1,26 @@
+/* src/styles/index.css */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #050705;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: #9DB89A;
+  font-size: 14px;
+}
+
+.app-shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}

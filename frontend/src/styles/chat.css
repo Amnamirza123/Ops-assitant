@@ -1,0 +1,265 @@
+/* src/styles/chat.css */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+.ops-chat-container {
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #050e0a;
+  background-image: radial-gradient(#0d2a1d 1px, transparent 1px);
+  background-size: 22px 22px;
+  color: #EAFBF3;
+  font-family: 'Inter', sans-serif;
+  box-sizing: border-box;
+}
+
+.ops-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ops-welcome {
+  margin: auto;
+  text-align: center;
+  color: #6FA98F;
+}
+
+.ops-welcome h2 {
+  color: #EAFBF3;
+  margin-bottom: 6px;
+}
+
+.ops-message {
+  max-width: 72%;
+  padding: 13px 17px;
+  border-radius: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  font-size: 14px;
+}
+
+.ops-message.user {
+  align-self: flex-end;
+  background: #049970;
+  color: #04140d;
+}
+
+.ops-message.assistant {
+  align-self: flex-start;
+  background: rgba(10, 20, 15, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 224, 168, 0.15);
+}
+
+/* ---- Tool activity indicator ---- */
+
+.ops-activity-card {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border-radius: 12px;
+  background: rgba(10, 20, 15, 0.6);
+  border: 1px solid rgba(10, 245, 196, 0.2);
+  color: #7FD4B4;
+  font-size: 13px;
+}
+
+.ops-activity-spin {
+  animation: spin 1s linear infinite;
+  color: #0AF5C4;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ---- Approval card — the signature moment ---- */
+
+.ops-approval-card {
+  align-self: stretch;
+  max-width: 480px;
+  background: rgba(20, 15, 5, 0.6);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(245, 166, 35, 0.35);
+  border-radius: 14px;
+  padding: 18px 20px;
+}
+
+.ops-approval-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #F5A623;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.ops-approval-subtext {
+  color: #B8A47F;
+  font-size: 12.5px;
+  margin: 0 0 14px;
+}
+
+.ops-approval-draft {
+  background: rgba(5, 15, 11, 0.6);
+  border: 1px solid rgba(245, 166, 35, 0.15);
+  border-radius: 9px;
+  padding: 14px;
+  font-size: 13px;
+  white-space: pre-wrap;
+  color: #EAFBF3;
+  margin-bottom: 16px;
+}
+
+.ops-approval-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.ops-approve-btn,
+.ops-reject-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.ops-approve-btn {
+  background: #049970;
+  border-color: #0AF5C4;
+  color: #03150d;
+}
+
+.ops-approve-btn:hover:not(:disabled) {
+  background: #05B583;
+}
+
+.ops-reject-btn {
+  background: transparent;
+  border-color: rgba(226, 75, 74, 0.4);
+  color: #E24B4A;
+}
+
+.ops-reject-btn:hover:not(:disabled) {
+  background: rgba(226, 75, 74, 0.1);
+}
+
+.ops-approve-btn:disabled,
+.ops-reject-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- Input area ---- */
+
+.ops-input-area {
+  display: flex;
+  gap: 12px;
+  padding: 18px;
+  background: rgba(7, 17, 12, 0.6);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(0, 224, 168, 0.15);
+}
+
+.ops-input-area textarea {
+  flex: 1;
+  resize: none;
+  background: rgba(5, 15, 11, 0.6);
+  border: 1px solid rgba(0, 224, 168, 0.2);
+  border-radius: 10px;
+  padding: 14px;
+  color: #EAFBF3;
+  font-size: 14px;
+  outline: none;
+  font-family: 'Inter', sans-serif;
+}
+
+.ops-input-area textarea:focus {
+  border-color: #0AF5C4;
+}
+
+.ops-input-area button {
+  background: #049970;
+  border: 1px solid #0AF5C4;
+  color: #03150d;
+  padding: 0 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ops-input-area button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ops-upload-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  background: rgba(0, 224, 168, 0.08);
+  border: 1px solid rgba(0, 224, 168, 0.2);
+  color: #7FD4B4;
+  border-radius: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.ops-upload-pin:hover:not(:disabled) {
+  background: rgba(0, 224, 168, 0.15);
+  color: #0AF5C4;
+}
+
+.ops-upload-pin:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ops-upload-status {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+}
+
+.ops-upload-status.uploading {
+  background: rgba(0, 224, 168, 0.08);
+  color: #7FD4B4;
+}
+
+.ops-upload-status.success {
+  background: rgba(10, 245, 196, 0.12);
+  color: #0AF5C4;
+}
+
+.ops-upload-status.duplicate {
+  background: rgba(245, 166, 35, 0.1);
+  color: #F5A623;
+}
+
+.ops-upload-status.error {
+  background: rgba(226, 75, 74, 0.1);
+  color: #E24B4A;
+}
