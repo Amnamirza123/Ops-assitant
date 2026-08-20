@@ -375,3 +375,37 @@
   align-items: center;
   justify-content: center;
 }
+
+.ops-tool-option.clickable {
+  cursor: pointer;
+}
+
+.ops-upload-pin.active {
+  background: rgba(0, 224, 168, 0.2);
+  border-color: #0AF5C4;
+  color: #0AF5C4;
+}
+
+.ops-active-tool-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  background: rgba(0, 224, 168, 0.06);
+  border-top: 1px solid rgba(0, 224, 168, 0.15);
+  color: #0AF5C4;
+  font-size: 12.5px;
+}
+
+.ops-active-tool-clear {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #5A8C77;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.ops-active-tool-clear:hover {
+  color: #E24B4A;
+}

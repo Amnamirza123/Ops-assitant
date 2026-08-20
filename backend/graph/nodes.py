@@ -16,7 +16,7 @@ from tools.email_tool import draft_email
 
 
 llm = ChatOpenAI(
-    model="nvidia/nemotron-3-ultra-550b-a55b:free",
+    model="google/gemma-4-26b-a4b-it:free",
     api_key=os.getenv("OPENROUTER_API_KEY"),
     base_url="https://openrouter.ai/api/v1",
     temperature=0,
@@ -38,11 +38,24 @@ MAX_STEPS = 6
 # ============================================================
 
 def classify_node(state: AgentState) -> dict:
+    question = state["messages"][-1].content
+
+    forced_tool = state.get("forced_tool")
+
+    # If the user picked a tool from the dropdown, skip the classify
+    # LLM call entirely — we already know where to route.
+    if forced_tool:
+        return {
+            "request_type": forced_tool,
+            "next_tool": forced_tool,
+            "original_question": question,
+            "step_count": state.get("step_count", 0) + 1,
+        }
+
     recent_messages = state["messages"][-6:]
     history_text = "\n".join(
         f"{m.type}: {m.content}" for m in recent_messages if hasattr(m, "content")
     )
-    question = state["messages"][-1].content
 
     prompt = (
         "Classify the LATEST user request into exactly one word: "
@@ -62,8 +75,8 @@ def classify_node(state: AgentState) -> dict:
         "IMPORTANT: base your classification primarily on the LATEST "
         "request text itself. Only use the recent conversation to "
         "resolve ambiguous pronouns like 'her'/'it'/'that' — do NOT let "
-        "an unrelated previous topic (like a prior math question) bias "
-        "classification of a new, clearly different question.\n\n"
+        "an unrelated previous topic bias classification of a new, "
+        "clearly different question.\n\n"
         f"Recent conversation:\n{history_text}\n\n"
         f"Latest request:\n{question}\n\n"
         "Answer with only one word."
@@ -82,7 +95,6 @@ def classify_node(state: AgentState) -> dict:
         "original_question": question,
         "step_count": state.get("step_count", 0) + 1,
     }
-
 
 # ============================================================
 # STEP LIMIT
@@ -109,16 +121,29 @@ def lookup_node(state: AgentState) -> dict:
     )
     question = state.get("original_question") or state["messages"][-1].content
 
-    extract_prompt = (
-        "Based on the user's request and recent conversation, identify "
-        "the person or company being asked about.\n"
-        "Reply with ONLY the person/company name.\n\n"
+    combined_prompt = (
+        "From the request below, identify TWO things:\n"
+        "1. The person/company name being asked about.\n"
+        "2. Whether the request needs a math calculation AFTER getting "
+        "their info (yes/no) — e.g. 'increase salary by 10%' needs math, "
+        "'who is X' does not.\n\n"
+        "Reply in exactly this format, nothing else:\n"
+        "NAME: <name>\n"
+        "MATH: <yes or no>\n\n"
         f"Recent conversation:\n{history_text}\n\n"
         f"User request:\n{question}"
     )
-    client_name = llm.invoke(extract_prompt).content.strip()
+    combined_response = llm.invoke(combined_prompt).content.strip()
 
-    client = get_client_by_name(client_name)
+    client_name = "unknown"
+    math_needed = "no"
+    for line in combined_response.split("\n"):
+        if line.upper().startswith("NAME:"):
+            client_name = line.split(":", 1)[1].strip()
+        elif line.upper().startswith("MATH:"):
+            math_needed = line.split(":", 1)[1].strip().lower()
+
+        client = get_client_by_name(client_name, state["user_id"])
 
     if not client:
         return {
@@ -129,15 +154,6 @@ def lookup_node(state: AgentState) -> dict:
             "used_tool": "Client Lookup",
             "step_count": state.get("step_count", 0) + 1,
         }
-
-    math_check_prompt = (
-        "Determine whether the user's request requires a mathematical "
-        "calculation AFTER retrieving the client information.\n\n"
-        "Return exactly one word: 'yes' or 'no'.\n\n"
-        f"User request:\n{question}\n\n"
-        f"Client information:\n{json.dumps(client, default=str)}"
-    )
-    math_needed = llm.invoke(math_check_prompt).content.strip().lower()
 
     safe_fields = {
         k: v for k, v in {
@@ -181,14 +197,20 @@ def calculator_node(state: AgentState) -> dict:
     if client:
         client_context = f"\n\nClient information available:\n{json.dumps(client, default=str)}"
 
-    extract_prompt = (
+        extract_prompt = (
         "Extract ONLY the mathematical expression needed to answer "
-        "the user's request.\n\n"
+        "the user's request, written as valid Python math syntax.\n\n"
         "Use numbers from the client information when necessary.\n\n"
+        "Available: sin, cos, tan, sqrt, log, log10, exp, pi, e, "
+        "radians(x), degrees(x), factorial, abs, round, pow.\n"
+        "Trig functions use RADIANS — if the user gives degrees, wrap "
+        "with radians(), e.g. 'sin 180 degrees' → sin(radians(180)).\n\n"
         "Examples:\n"
         "- 'increase salary by 10%' with salary 5000 → 5000 * 1.10\n"
-        "- 'decrease salary by 20%' with salary 5000 → 5000 * 0.80\n"
-        "- 'what is 20 + 30?' → 20 + 30\n\n"
+        "- 'what is 20 + 30?' → 20 + 30\n"
+        "- 'sin of 180 degrees' → sin(radians(180))\n"
+        "- 'square root of 144' → sqrt(144)\n"
+        "- 'pi times 10' → pi * 10\n\n"
         "Return ONLY the expression. Do not include words, explanation, or markdown.\n\n"
         f"User request:\n{question}"
         f"{client_context}"
@@ -270,10 +292,13 @@ def final_node(state: AgentState) -> dict:
     if client_data:
         intent_prompt = (
             "Classify the user's request into exactly one word: 'general' or 'specific'.\n\n"
-            "'general' means the user wants a conversational description of the "
-            "person, such as 'who is Khadija' or 'tell me about Khadija'.\n\n"
-            "'specific' means the user asks for particular fields such as email, "
-            "salary, phone, role, department, experience, status, or details.\n\n"
+            "'general' means the user wants a brief, conversational description of "
+            "the person — ONLY phrasings like 'who is X' or 'tell me about X'.\n\n"
+            "'specific' means the user wants the actual data fields, including: "
+            "a named field (email, salary, phone, role, department, experience, "
+            "status), OR any phrasing that asks for their 'information', 'info', "
+            "'details', or 'full details' — these should return the complete "
+            "record, not a casual summary.\n\n"
             f"Request:\n{question}\n\n"
             "Answer with only one word."
         )
@@ -282,6 +307,9 @@ def final_node(state: AgentState) -> dict:
         if intent == "specific" and not calculation_result:
             requested_fields_prompt = (
                 "Identify exactly which fields the user requested.\n"
+                "If the user asked for 'information', 'info', 'details', or "
+                "'full details' (without naming specific fields), return ALL "
+                "available field names.\n"
                 "Return only the field names separated by commas.\n\n"
                 "Available fields:\n"
                 "name, email, status, role, department, experience, salary, notes\n\n"
@@ -365,6 +393,8 @@ def final_node(state: AgentState) -> dict:
 # EMAIL
 # ============================================================
 
+import re
+
 def draft_email_node(state: AgentState) -> dict:
     if check_step_limit(state):
         return {
@@ -373,14 +403,37 @@ def draft_email_node(state: AgentState) -> dict:
         }
 
     question = state.get("original_question") or state["messages"][-1].content
+
+    # First, check if the message already contains a literal email address —
+    # if so, use it directly, no client lookup needed.
+    email_match = re.search(r'[\w.+-]+@[\w-]+\.[\w.-]+', question)
+
+    if email_match:
+        recipient_email = email_match.group(0)
+        client = None  # no client record involved for a raw address
+    else:
+        name_prompt = (
+            "Identify the person/company name this email should be sent to. "
+            "Reply with ONLY the name.\n\n"
+            f"Request:\n{question}"
+        )
+        recipient_name = llm.invoke(name_prompt).content.strip()
+        client = get_client_by_name(recipient_name, state["user_id"])
+
+        if not client or not client.get("email"):
+            return {
+                "messages": [AIMessage(content=f"Can't draft this email — no email on file for '{recipient_name}'. Add their email in the Clients panel first, or give me their email address directly.")],
+                "next_tool": None,
+            }
+        recipient_email = client["email"]
+
     draft = draft_email.invoke(question)
 
     return {
         "draft_email": draft,
+        "client_data": client or {"email": recipient_email},  # so send_email_node always has an email to use
         "step_count": state.get("step_count", 0) + 1,
-        "used_tool": "Email Assistant",
     }
-
 
 # ============================================================
 # HUMAN APPROVAL
@@ -398,10 +451,44 @@ def wait_for_approval_node(state: AgentState) -> dict:
 # SEND EMAIL
 # ============================================================
 
+import smtplib
+from email.mime.text import MIMEText
+
 def send_email_node(state: AgentState) -> dict:
-    return {
-        "messages": [AIMessage(content=f"Email sent:\n\n{state['draft_email']}")]
-    }
+    draft = state["draft_email"]
+    client = state.get("client_data")
+    recipient = client.get("email") if client else None
+
+    if not recipient:
+        return {
+            "messages": [AIMessage(content="Could not send — no recipient email found for this client.")],
+            "used_tool": "Email Assistant",
+        }
+
+    # Split subject line out of the draft (assumes "Subject: ..." as first line)
+    lines = draft.strip().split("\n", 1)
+    subject = lines[0].replace("Subject:", "").strip() if lines[0].lower().startswith("subject:") else "Message from Ops Assistant"
+    body = lines[1].strip() if len(lines) > 1 else draft
+
+    try:
+        msg = MIMEText(body)
+        msg["Subject"] = subject
+        msg["From"] = os.getenv("SMTP_EMAIL")
+        msg["To"] = recipient
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(os.getenv("SMTP_EMAIL"), os.getenv("SMTP_PASSWORD"))
+            server.sendmail(os.getenv("SMTP_EMAIL"), recipient, msg.as_string())
+
+        return {
+            "messages": [AIMessage(content=f"Email sent to {recipient}:\n\n{draft}")],
+            "used_tool": "Email Assistant",
+        }
+    except Exception as e:
+        return {
+            "messages": [AIMessage(content=f"Failed to send email: {e}")],
+            "used_tool": "Email Assistant",
+        }
 
 
 # ============================================================

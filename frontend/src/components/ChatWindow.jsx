@@ -17,15 +17,25 @@ const TOOL_ICONS = {
   'Email Assistant': 'ti-mail',
 };
 
+const TOOL_OPTIONS = [
+  { key: 'client', label: 'Client Lookup', icon: 'ti-users', desc: 'Look up client status, role, department, contact info' },
+  { key: 'math', label: 'Calculator', icon: 'ti-calculator', desc: 'Run calculations and percentages' },
+  { key: 'rag', label: 'Knowledge Base', icon: 'ti-file-search', desc: 'Search uploaded company documents' },
+  { key: 'email', label: 'Email Assistant', icon: 'ti-mail', desc: 'Draft emails — sent only after your approval' },
+];
+
 function ChatWindow({ sessionId, onMessageSent, onDocumentUploaded }) {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState(null);
   const [pendingApproval, setPendingApproval] = useState(null);
+  const [showToolsMenu, setShowToolsMenu] = useState(false);
+  const [selectedTool, setSelectedTool] = useState(null); // e.g. "client", "math", "rag", "email"
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
-  const [showToolsMenu, setShowToolsMenu] = useState(false);
+  const pendingUserMessageRef = useRef(null);
+
 
   useEffect(() => {
     loadHistory();
@@ -47,13 +57,21 @@ function ChatWindow({ sessionId, onMessageSent, onDocumentUploaded }) {
     return { Authorization: `Bearer ${session?.access_token}` };
   }
 
-  async function loadHistory() {
+      async function loadHistory() {
     try {
       const headers = await authHeader();
       const res = await fetch(`${API_URL}/chat/${sessionId}/history`, { headers });
-      if (res.ok) setMessages(await res.json());
+      if (res.ok) {
+        let serverHistory = await res.json();
+        // Safety net: if we have a pending message not yet reflected
+        // server-side, keep it visible regardless of what triggered this fetch.
+        if (pendingUserMessageRef.current && loading) {
+          serverHistory = [...serverHistory, pendingUserMessageRef.current];
+        }
+        setMessages(serverHistory);
+      }
     } catch {
-      // starts empty on failure
+      // stays empty on failure
     }
   }
 
@@ -73,20 +91,31 @@ function ChatWindow({ sessionId, onMessageSent, onDocumentUploaded }) {
     }
   }
 
-  async function handleSend() {
+  function handleSelectTool(toolKey) {
+    setSelectedTool(toolKey);
+    setShowToolsMenu(false);
+  }
+
+      async function handleSend() {
     if (!message.trim() || loading) return;
 
     const userText = message;
+    const toolToSend = selectedTool;
     setMessage('');
     setLoading(true);
-    setMessages((prev) => [...prev, { role: 'user', content: userText }]);
+    pendingUserMessageRef.current = { role: 'user', content: userText };
+    setMessages((prev) => [...prev, pendingUserMessageRef.current]);
 
     try {
       const headers = await authHeader();
       const res = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userText, session_id: sessionId }),
+        body: JSON.stringify({
+          message: userText,
+          session_id: sessionId,
+          forced_tool: toolToSend,
+        }),
       });
 
       if (!res.ok) throw new Error('Server error ' + res.status);
@@ -103,8 +132,9 @@ function ChatWindow({ sessionId, onMessageSent, onDocumentUploaded }) {
         ...prev,
         { role: 'assistant', content: 'Error: ' + error.message },
       ]);
-    } finally {
+      } finally {
       setLoading(false);
+      pendingUserMessageRef.current = null;
     }
   }
 
@@ -164,6 +194,8 @@ function ChatWindow({ sessionId, onMessageSent, onDocumentUploaded }) {
       e.target.value = '';
     }
   }
+
+  const activeToolMeta = TOOL_OPTIONS.find((t) => t.key === selectedTool);
 
   return (
     <div className="ops-chat-container">
@@ -232,7 +264,17 @@ function ChatWindow({ sessionId, onMessageSent, onDocumentUploaded }) {
         <div ref={messagesEndRef} />
       </div>
 
-            <div className="ops-input-area">
+      {activeToolMeta && (
+        <div className="ops-active-tool-bar">
+          <i className={`ti ${activeToolMeta.icon}`} />
+          Using {activeToolMeta.label}
+          <button onClick={() => setSelectedTool(null)} className="ops-active-tool-clear">
+            <i className="ti ti-x" />
+          </button>
+        </div>
+      )}
+
+      <div className="ops-input-area">
         <button
           className="ops-upload-pin"
           onClick={() => fileInputRef.current?.click()}
@@ -251,7 +293,7 @@ function ChatWindow({ sessionId, onMessageSent, onDocumentUploaded }) {
 
         <div className="ops-tools-menu-wrapper">
           <button
-            className="ops-upload-pin"
+            className={selectedTool ? 'ops-upload-pin active' : 'ops-upload-pin'}
             onClick={() => setShowToolsMenu((v) => !v)}
             title="Available tools"
           >
@@ -260,23 +302,17 @@ function ChatWindow({ sessionId, onMessageSent, onDocumentUploaded }) {
 
           {showToolsMenu && (
             <div className="ops-tools-dropdown">
-              <div className="ops-tools-dropdown-header">Available tools</div>
-              <div className="ops-tool-option">
-                <i className="ti ti-users" /> Client Lookup
-                <span>Look up client status, role, department, contact info</span>
-              </div>
-              <div className="ops-tool-option">
-                <i className="ti ti-calculator" /> Calculator
-                <span>Run calculations and percentages</span>
-              </div>
-              <div className="ops-tool-option">
-                <i className="ti ti-file-search" /> Knowledge Base
-                <span>Search uploaded company documents</span>
-              </div>
-              <div className="ops-tool-option">
-                <i className="ti ti-mail" /> Email Assistant
-                <span>Draft emails — sent only after your approval</span>
-              </div>
+              <div className="ops-tools-dropdown-header">Choose a tool (optional)</div>
+              {TOOL_OPTIONS.map((tool) => (
+                <div
+                  key={tool.key}
+                  className="ops-tool-option clickable"
+                  onClick={() => handleSelectTool(tool.key)}
+                >
+                  <i className={`ti ${tool.icon}`} /> {tool.label}
+                  <span>{tool.desc}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>

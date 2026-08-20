@@ -30,8 +30,13 @@ function App() {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => setSession(session)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, newSession) => {
+        if (_event === 'SIGNED_OUT') {
+          localStorage.removeItem('ops_active_session_id');
+        }
+        setSession(newSession);
+      }
     );
 
     return () => subscription.unsubscribe();

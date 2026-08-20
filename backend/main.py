@@ -47,6 +47,7 @@ def chat(request: ChatRequest, user: dict = Depends(get_current_user)):
             "session_id": request.session_id,
             "user_id": user["user_id"],
             "step_count": 0,
+            "forced_tool": request.forced_tool,
         },
         config=config,
     )
@@ -99,17 +100,21 @@ def delete(session_id: str, user: dict = Depends(get_current_user)):
 
 @app.get("/clients")
 def get_clients(user: dict = Depends(get_current_user)):
-    return list_clients()
+    return list_clients(user["user_id"])
 
 
 @app.post("/clients")
 def create_client(request: AddClientRequest, user: dict = Depends(get_current_user)):
-    return add_client(request.name, request.email, request.status, request.notes, request.role, request.experience, request.department, request.salary)
+    return add_client(
+        request.name, request.email, request.status, request.notes,
+        request.role, request.experience, request.department, request.salary,
+        user_id=user["user_id"],
+    )
 
 
 @app.delete("/clients/{client_id}")
 def remove_client(client_id: str, user: dict = Depends(get_current_user)):
-    success = delete_client(client_id)
+    success = delete_client(client_id, user["user_id"])
     if not success:
         raise HTTPException(status_code=404, detail="Client not found")
     return {"deleted": True}
@@ -118,10 +123,8 @@ def remove_client(client_id: str, user: dict = Depends(get_current_user)):
 @app.post("/clients/import")
 async def import_clients(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
     rows = await parse_client_file(file)
-    count = bulk_add_clients(rows)
+    count = bulk_add_clients(rows, user["user_id"])
     return {"imported": count}
-
-
 # ---- Knowledge base documents ----
 
 @app.post("/documents/upload")

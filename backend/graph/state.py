@@ -47,3 +47,6 @@ class AgentState(TypedDict):
 
     # Guardrail tracking.
     step_count: int
+
+    #forced tool calling
+    forced_tool: Optional[str]

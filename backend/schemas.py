@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class ChatRequest(BaseModel):
     message: str
     session_id: str
+    forced_tool: str | None = None
 
 
 class ApproveRequest(BaseModel):

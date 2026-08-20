@@ -8,10 +8,22 @@ def get_history(session_id: str, user_id: str) -> list[dict]:
         supabase.table("chat_messages")
         .select("role, content")
         .eq("session_id", session_id)
-        .order("created_at")
         .execute()
     )
-    return result.data
+    # Verify the session actually belongs to this user before returning
+    # anything — chat_messages doesn't store user_id directly, so check
+    # via chat_sessions.
+    session_check = (
+        supabase.table("chat_sessions")
+        .select("session_id")
+        .eq("session_id", session_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not session_check.data:
+        return []  # session doesn't belong to this user — return nothing
+
+    return sorted(result.data, key=lambda m: m.get("created_at", ""))
 
 
 def save_turn(session_id: str, user_id: str, user_message: str, assistant_message: str) -> None:

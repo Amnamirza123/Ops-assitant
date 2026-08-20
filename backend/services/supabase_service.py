@@ -9,12 +9,13 @@ SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
-# ---- Client records ----
+# ---- Client records (now scoped per user) ----
 
-def get_client_by_name(name: str) -> dict | None:
+def get_client_by_name(name: str, user_id: str) -> dict | None:
     result = (
         supabase.table("clients")
         .select("*")
+        .eq("user_id", user_id)
         .ilike("name", f"%{name}%")
         .limit(1)
         .execute()
@@ -22,47 +23,48 @@ def get_client_by_name(name: str) -> dict | None:
     return result.data[0] if result.data else None
 
 
-def list_clients() -> list[dict]:
-    result = supabase.table("clients").select("*").order("created_at", desc=True).execute()
+def list_clients(user_id: str) -> list[dict]:
+    result = (
+        supabase.table("clients")
+        .select("*")
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .execute()
+    )
     return result.data
 
 
-def add_client(
-    name: str,
-    email: str | None,
-    status: str,
-    notes: str | None,
-    role: str | None = None,
-    experience: str | None = None,
-    department: str | None = None,
-    salary: str | None = None,
-) -> dict:
+def add_client(name, email, status, notes, role=None, experience=None, department=None, salary=None, user_id=None) -> dict:
     result = (
         supabase.table("clients")
         .insert({
-            "name": name,
-            "email": email,
-            "status": status,
-            "notes": notes,
-            "role": role,
-            "experience": experience,
-            "department": department,
-            "salary": salary,
+            "name": name, "email": email, "status": status, "notes": notes,
+            "role": role, "experience": experience,
+            "department": department, "salary": salary,
+            "user_id": user_id,
         })
         .execute()
     )
     return result.data[0]
 
 
-def bulk_add_clients(rows: list[dict]) -> int:
+def bulk_add_clients(rows: list[dict], user_id: str) -> int:
     if not rows:
         return 0
+    for row in rows:
+        row["user_id"] = user_id
     result = supabase.table("clients").insert(rows).execute()
     return len(result.data)
 
 
-def delete_client(client_id: str) -> bool:
-    result = supabase.table("clients").delete().eq("id", client_id).execute()
+def delete_client(client_id: str, user_id: str) -> bool:
+    result = (
+        supabase.table("clients")
+        .delete()
+        .eq("id", client_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
     return len(result.data) > 0
 
 
