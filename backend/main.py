@@ -68,6 +68,7 @@ def approve(request: ApproveRequest, user: dict = Depends(get_current_user)):
     answer = result["messages"][-1].content
     save_turn(request.session_id, user["user_id"], "[approval decision]", answer)  # ADD THIS
     return {"status": "done", "answer": answer}
+
 # ---- Chat sessions (sidebar) ----
 
 @app.get("/chat/sessions")

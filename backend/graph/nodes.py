@@ -197,7 +197,7 @@ def calculator_node(state: AgentState) -> dict:
     if client:
         client_context = f"\n\nClient information available:\n{json.dumps(client, default=str)}"
 
-        extract_prompt = (
+    extract_prompt = (
         "Extract ONLY the mathematical expression needed to answer "
         "the user's request, written as valid Python math syntax.\n\n"
         "Use numbers from the client information when necessary.\n\n"
