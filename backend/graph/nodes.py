@@ -25,8 +25,8 @@ llm = ChatOpenAI(
 # Small, fast model for simple mechanical steps (classify, extraction) —
 # these don't need heavy reasoning, just speed.
 fast_llm = ChatOpenAI(
-    model="nvidia/nemotron-3-nano-30b-a3b:free",
-    api_key=os.getenv("OPENROUTER_API_KEY"),
+    model="google/gemma-4-26b-a4b-it:free",
+    api_key=os.getenv("OPENROUTER_API_KEY"), 
     base_url="https://openrouter.ai/api/v1",
     temperature=0,
 )
