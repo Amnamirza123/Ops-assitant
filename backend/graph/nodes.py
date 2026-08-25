@@ -16,7 +16,7 @@ from tools.email_tool import draft_email
 
 
 llm = ChatOpenAI(
-    model="google/gemma-4-26b-a4b-it:free",
+    model="nvidia/nemotron-3.5-lightning:free",
     api_key=os.getenv("OPENROUTER_API_KEY"),
     base_url="https://openrouter.ai/api/v1",
     temperature=0,
